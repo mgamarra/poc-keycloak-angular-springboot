@@ -1,32 +1,21 @@
-# stage1 as builder
-FROM node:10-alpine as builder
+FROM node:12.16.1
 
-# copy the package.json to install dependencies
-COPY package.json package-lock.json ./
+#RUN npm config set strict-ssl false && npm config set proxy http://proxy.xxxxxx.com:8080
 
-# Install the dependencies and make the folder
-RUN npm install && mkdir /tasks-ui && mv ./node_modules ./tasks-ui
+RUN npm config set strict-ssl false 
 
-WORKDIR /tasks-ui
-
+# get the app
+WORKDIR /src
 COPY . .
 
-# Build the project and copy the files
-RUN npm run ng build -- --deploy-url=/keycloak-tasks/ --prod
+# install packages
+RUN npm i
+RUN npm install -g @angular/cli
+
+ENV PORT 4200
+EXPOSE $PORT
 
 
-FROM nginx:alpine
+# start app
+CMD ng serve --host 0.0.0.0 --port=${PORT}
 
-#!/bin/sh
-
-COPY ./.nginx/nginx.conf /etc/nginx/nginx.conf
-
-## Remove default nginx index page
-RUN rm -rf /usr/share/nginx/html/*
-
-# Copy from the stahg 1
-COPY --from=builder /tasks-ui/dist /usr/share/nginx/html
-
-EXPOSE 4200 80
-
-ENTRYPOINT ["nginx", "-g", "daemon off;"]
